@@ -1,0 +1,17 @@
+.video {
+    height: 20rem;
+    width: 10rem;
+
+    border: 1px solid black;
+
+    text-align: center;
+    vertical-align: center;
+}
+
+.playing {
+    background-color: lightgreen;
+}
+
+.paused {
+    background-color: grey;
+}
