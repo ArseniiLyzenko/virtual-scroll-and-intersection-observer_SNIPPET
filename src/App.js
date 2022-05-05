@@ -17,7 +17,7 @@ class App extends React.Component {
   }
 
   componentDidMount() {
-    //Play after mount
+    //Play first video
     this.setState(state => {
       const currentPlaying = 0;
 
@@ -42,17 +42,36 @@ class App extends React.Component {
           videos[id].isVisible = item.isIntersecting;
         });
 
-        // Play first top video and stop previous
-        for(const [i, vid] of videos.entries()) {
-          if (videos[currentPlaying].isVisible && !videos[currentPlaying - 1]?.isVisible) break;
-          if (vid.isVisible) {
-            console.log('play next')
-            videos[currentPlaying].isPlaying = false;
-            currentPlaying = i;
-            vid.isPlaying = true;
-            break;
+        if (!videos[currentPlaying].isVisible) {
+          videos[currentPlaying].isPlaying = false;
+
+           if (videos[currentPlaying + 1].isVisible) {
+            if (videos[currentPlaying - 1]) observer.unobserve(videos[currentPlaying - 1]?.ref.current);
+            currentPlaying++;
+            videos[currentPlaying].isPlaying = true;
+            observer.observe(videos[currentPlaying + 1].ref.current);
           }
         }
+
+        if (videos[currentPlaying - 1]?.isVisible) {
+          videos[currentPlaying].isPlaying = false;
+          observer.unobserve(videos[currentPlaying + 1].ref.current);
+          currentPlaying--;
+          videos[currentPlaying].isPlaying = true;
+          if (videos[currentPlaying - 1]) observer.observe(videos[currentPlaying - 1].ref.current);
+        }
+
+        // Play first top video and stop previous
+        // for(const [i, vid] of videos.entries()) {
+        //   if (videos[currentPlaying].isVisible && !videos[currentPlaying - 1]?.isVisible) break;
+        //   if (vid.isVisible) {
+        //     console.log('play next')
+        //     videos[currentPlaying].isPlaying = false;
+        //     currentPlaying = i;
+        //     vid.isPlaying = true;
+        //     break;
+        //   }
+        // }
 
         this.setState({
           videos: videos,
@@ -66,9 +85,8 @@ class App extends React.Component {
       },
     );
 
-    // const elements = document.querySelectorAll('.video');
-    const elements = this.state.videos.map( vid => vid.ref.current );
-    elements.forEach(element => observer.observe(element));
+    const elementsToObserve = this.state.videos.slice(0,2).map( vid => vid.ref.current );
+    elementsToObserve.forEach(element => observer.observe(element));
   }
 
   // componentDidUpdate(prevProps, prevState, snapshot) {
