@@ -9,6 +9,7 @@ const Video = React.forwardRef((props, ref) => {
       data-id={props.dataId}
       ref={ref}
     >
+      { props.dataId }
     </div>
   )
 });

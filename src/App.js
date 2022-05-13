@@ -6,28 +6,65 @@ class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      videos: props.allVideos.map((vid) => ({
-        id: vid.id,
-        isVisible: false,
-        isPlaying: false,
-        ref: React.createRef(),
-      })),
+      videos: null,
       currentPlaying: null,
     };
   }
 
-  componentDidMount() {
-    //Play first video
-    this.setState(state => {
-      const currentPlaying = 0;
+  /**
+   *
+   * @param id
+   * @param amount of items
+   */
+  getVideos(id, amount) {
+    if (id === 0) return this.props.allVideos.slice(id, id + amount);
 
-      const videos = state.videos.slice();
-      videos[currentPlaying].isPlaying = true;
-
-      return {
-        currentPlaying: currentPlaying,
-        videos: videos,
+    if (amount < 0) {
+      for (const [index, vid] of this.props.allVideos.entries()) {
+        if (vid.id === id) return this.props.allVideos[index + amount];
       }
+    }
+
+    for (const [index, vid] of this.props.allVideos.entries()) {
+      if (vid.id === id) return this.props.allVideos[index + 1];
+    }
+  }
+
+  getVideo(videos, id) {
+    for (const vid of videos) {
+      if (vid.id === id) return vid;
+    }
+  }
+
+  getNextToPlay(videos, currentPlaying) {
+    for (const [index, vid] of videos.entries()) {
+      if (vid.id === currentPlaying) return videos[index + 1].id;
+    }
+  }
+
+  getPrevToPlay(videos, currentPlaying) {
+    for (const [index, vid] of videos.entries()) {
+      if (vid.id === currentPlaying) return videos[index - 1].id;
+    }
+  }
+
+  componentDidMount() {
+    // get first [DOMElementsMaxNum]:number videos
+    const videos = this.getVideos(0, Math.floor(this.props.DOMElementsMaxNum / 2) + 1)
+      .map(vid => ({
+          id: vid.id,
+          isVisible: false,
+          isPlaying: false,
+          ref: React.createRef(),
+      }));
+
+    //Play first video
+    const currentPlaying = videos[0].id;
+    // videos[currentPlaying].isPlaying = true;
+    this.getVideo(videos, currentPlaying).isPlaying = true;
+    this.setState({
+      videos: videos,
+      currentPlaying: currentPlaying,
     });
 
     const observer = new IntersectionObserver((entries, observer) => {
@@ -39,26 +76,48 @@ class App extends React.Component {
 
         entries.forEach((item, index) => {
           const id = Number(item.target.dataset.id);
-          videos[id].isVisible = item.isIntersecting;
+          this.getVideo(videos, id).isVisible = item.isIntersecting;
         });
 
-        if (!videos[currentPlaying].isVisible) {
-          videos[currentPlaying].isPlaying = false;
+        if (!this.getVideo(videos, currentPlaying).isVisible) {
+          this.getVideo(videos, currentPlaying).isPlaying = false;
 
-           if (videos[currentPlaying + 1].isVisible) {
-            if (videos[currentPlaying - 1]) observer.unobserve(videos[currentPlaying - 1]?.ref.current);
-            currentPlaying++;
-            videos[currentPlaying].isPlaying = true;
-            observer.observe(videos[currentPlaying + 1].ref.current);
+          if (this.getVideo(videos, currentPlaying + 1).isVisible) {
+            if (this.getVideo(videos, currentPlaying - 1)) observer.unobserve(this.getVideo(videos, currentPlaying - 1)?.ref.current);
+            currentPlaying = this.getNextToPlay(videos, currentPlaying);
+            this.getVideo(videos, currentPlaying).isPlaying = true;
+            observer.observe(this.getVideo(videos, currentPlaying + 1).ref.current);
+            // delete video from the top
+            if (videos.length > this.props.DOMElementsMaxNum)
+              videos.shift();
+            // add video to the bottom
+            const lastId = videos[videos.length - 1].id;
+            videos.push({
+              id: this.getVideos(lastId, 1).id,
+              isVisible: false,
+              isPlaying: false,
+              ref: React.createRef(),
+            });
           }
         }
 
-        if (videos[currentPlaying - 1]?.isVisible) {
-          videos[currentPlaying].isPlaying = false;
-          observer.unobserve(videos[currentPlaying + 1].ref.current);
-          currentPlaying--;
-          videos[currentPlaying].isPlaying = true;
-          if (videos[currentPlaying - 1]) observer.observe(videos[currentPlaying - 1].ref.current);
+        if (this.getVideo(videos, currentPlaying - 1)?.isVisible) {
+          this.getVideo(videos, currentPlaying).isPlaying = false;
+          observer.unobserve(this.getVideo(videos, currentPlaying + 1).ref.current);
+          currentPlaying = this.getPrevToPlay(videos, currentPlaying);
+          this.getVideo(videos, currentPlaying).isPlaying = true;
+          if (this.getVideo(videos, currentPlaying - 1)) observer.observe(this.getVideo(videos, currentPlaying - 1).ref.current);
+          // if (videos.length > this.props.DOMElementsMaxNum)
+            videos.pop();
+          const firstId = videos[0].id;
+          if (this.getVideos(firstId, -1)) {
+            videos.unshift({
+              id: this.getVideos(firstId, -1).id,
+              isVisible: false,
+              isPlaying: false,
+              ref: React.createRef(),
+            });
+          }
         }
 
         // Play first top video and stop previous
@@ -85,8 +144,14 @@ class App extends React.Component {
       },
     );
 
-    const elementsToObserve = this.state.videos.slice(0,2).map( vid => vid.ref.current );
-    elementsToObserve.forEach(element => observer.observe(element));
+    setTimeout(() => {
+      const elementsToObserve = this.state.videos
+        .slice(0,2)
+        .map( vid => vid.ref.current );
+
+      elementsToObserve.forEach(element => observer.observe(element));
+    });
+
   }
 
   // componentDidUpdate(prevProps, prevState, snapshot) {
@@ -116,19 +181,21 @@ class App extends React.Component {
   }
 
   render() {
-    // const videosToRender = this.state.allVideos.slice();
+    let videos;
 
-    // this.setState({ videos: videosToRender });
-
-    const videos = this.state.videos.map((video, index) =>
-      <Video
-        key={index.toString()}
-        isPlaying={video.isPlaying}
-        onClick={() => this.handleClick(index)}
-        dataId={index}
-        ref={video.ref}
-      />
-    )
+    if (this.state.videos) {
+      videos = this.state.videos.map((video) =>
+        <Video
+          key={video.id}
+          isPlaying={video.isPlaying}
+          onClick={() => this.handleClick(video.id)}
+          dataId={video.id}
+          ref={video.ref}
+        />
+      );
+    } else {
+      videos = 'Loading...';
+    }
 
     return (
       <div className="App">

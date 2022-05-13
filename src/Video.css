@@ -4,8 +4,9 @@
 
     border: 1px solid black;
 
-    text-align: center;
-    vertical-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .playing {

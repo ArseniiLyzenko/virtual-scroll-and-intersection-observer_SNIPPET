@@ -7,7 +7,10 @@ import reportWebVitals from './reportWebVitals';
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   // <React.StrictMode>
-    <App allVideos={Array.from({ length: 100 }, (item, index) => ({ id: index }))} />
+    <App
+      allVideos={Array.from({ length: 100 }, (item, index) => ({ id: index+1000 }))}
+      DOMElementsMaxNum={10}
+    />
   // </React.StrictMode>
 );
 
